@@ -1,0 +1,115 @@
+# customer_support.py
+from typing import TypedDict
+from langgraph.graph import StateGraph, END
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
+import os
+from dotenv import load_dotenv
+
+# Load Gemini key
+load_dotenv()
+# Optionally: os.environ['GOOGLE_API_KEY'] = os.getenv('GEMINI_API_KEY')
+
+class State(TypedDict):
+    query: str
+    category: str
+    sentiment: str
+    response: str
+
+# 1) Categorization node
+def categorize(state: State) -> State:
+    prompt = ChatPromptTemplate.from_template(
+        "Categorize the following customer query into one of: Technical, Billing, General.\nQuery: {query}"
+    )
+    chain = prompt | ChatGoogleGenerativeAI(
+        model="gemini-1.5-pro",
+        temperature=0
+    )
+    category = chain.invoke({"query": state["query"]}).content
+    return {"category": category}
+
+# 2) Sentiment analysis node
+def analyze_sentiment(state: State) -> State:
+    prompt = ChatPromptTemplate.from_template(
+        "Analyze the sentiment of this customer query. Respond with Positive, Neutral, or Negative.\nQuery: {query}"
+    )
+    chain = prompt | ChatGoogleGenerativeAI(
+        model="gemini-1.5-pro",
+        temperature=0
+    )
+    sentiment = chain.invoke({"query": state["query"]}).content
+    return {"sentiment": sentiment}
+
+# 3) Response generators
+
+def handle_technical(state: State) -> State:
+    prompt = ChatPromptTemplate.from_template(
+        "Provide a technical support response: {query}"
+    )
+    chain = prompt | ChatGoogleGenerativeAI(model="gemini-1.5-pro", temperature=0)
+    return {"response": chain.invoke({"query": state["query"]}).content}
+
+
+def handle_billing(state: State) -> State:
+    prompt = ChatPromptTemplate.from_template(
+        "Provide a billing support response: {query}"
+    )
+    chain = prompt | ChatGoogleGenerativeAI(model="gemini-1.5-pro", temperature=0)
+    return {"response": chain.invoke({"query": state["query"]}).content}
+
+
+def handle_general(state: State) -> State:
+    prompt = ChatPromptTemplate.from_template(
+        "Provide a general support response: {query}"
+    )
+    chain = prompt | ChatGoogleGenerativeAI(model="gemini-1.5-pro", temperature=0)
+    return {"response": chain.invoke({"query": state["query"]}).content}
+
+# 4) Escalation node
+
+def escalate(state: State) -> State:
+    return {"response": "Escalated to a human agent due to negative sentiment."}
+
+# 5) Routing logic
+def route_query(state: State) -> str:
+    if state["sentiment"] == "Negative":
+        return "escalate"
+    return {
+        "Technical": "handle_technical",
+        "Billing":  "handle_billing",
+    }.get(state["category"], "handle_general")
+
+# --- Build the StateGraph ---
+workflow = StateGraph(State)
+for name, fn in [
+    ("categorize", categorize),
+    ("analyze_sentiment", analyze_sentiment),
+    ("handle_technical", handle_technical),
+    ("handle_billing", handle_billing),
+    ("handle_general", handle_general),
+    ("escalate", escalate),
+]:
+    workflow.add_node(name, fn)
+
+workflow.add_edge("categorize", "analyze_sentiment")
+workflow.add_conditional_edges(
+    "analyze_sentiment",
+    route_query,
+    {
+        "handle_technical": "handle_technical",
+        "handle_billing":  "handle_billing",
+        "handle_general":  "handle_general",
+        "escalate":         "escalate",
+    }
+)
+for end_node in ["handle_technical", "handle_billing", "handle_general", "escalate"]:
+    workflow.add_edge(end_node, END)
+
+workflow.set_entry_point("categorize")
+app = workflow.compile()
+
+# Utility to expose via API
+
+def run_customer_support(query: str) -> dict:
+    res = app.invoke({"query": query})
+    return {k: res[k] for k in ("category", "sentiment", "response")}
