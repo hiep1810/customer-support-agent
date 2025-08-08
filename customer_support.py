@@ -10,6 +10,8 @@ from dotenv import load_dotenv
 load_dotenv()
 # Optionally: os.environ['GOOGLE_API_KEY'] = os.getenv('GEMINI_API_KEY')
 
+GEMINI_MODEL = os.getenv("GEMINI_MODEL")
+
 class State(TypedDict):
     query: str
     category: str
@@ -22,7 +24,7 @@ def categorize(state: State) -> State:
         "Categorize the following customer query into one of: Technical, Billing, General.\nQuery: {query}"
     )
     chain = prompt | ChatGoogleGenerativeAI(
-        model="gemini-1.5-pro",
+        model=GEMINI_MODEL,
         temperature=0
     )
     category = chain.invoke({"query": state["query"]}).content
@@ -34,7 +36,7 @@ def analyze_sentiment(state: State) -> State:
         "Analyze the sentiment of this customer query. Respond with Positive, Neutral, or Negative.\nQuery: {query}"
     )
     chain = prompt | ChatGoogleGenerativeAI(
-        model="gemini-1.5-pro",
+        model=GEMINI_MODEL,
         temperature=0
     )
     sentiment = chain.invoke({"query": state["query"]}).content
@@ -46,7 +48,7 @@ def handle_technical(state: State) -> State:
     prompt = ChatPromptTemplate.from_template(
         "Provide a technical support response: {query}"
     )
-    chain = prompt | ChatGoogleGenerativeAI(model="gemini-1.5-pro", temperature=0)
+    chain = prompt | ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0)
     return {"response": chain.invoke({"query": state["query"]}).content}
 
 
@@ -54,7 +56,7 @@ def handle_billing(state: State) -> State:
     prompt = ChatPromptTemplate.from_template(
         "Provide a billing support response: {query}"
     )
-    chain = prompt | ChatGoogleGenerativeAI(model="gemini-1.5-pro", temperature=0)
+    chain = prompt | ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0)
     return {"response": chain.invoke({"query": state["query"]}).content}
 
 
@@ -62,7 +64,7 @@ def handle_general(state: State) -> State:
     prompt = ChatPromptTemplate.from_template(
         "Provide a general support response: {query}"
     )
-    chain = prompt | ChatGoogleGenerativeAI(model="gemini-1.5-pro", temperature=0)
+    chain = prompt | ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0)
     return {"response": chain.invoke({"query": state["query"]}).content}
 
 # 4) Escalation node
