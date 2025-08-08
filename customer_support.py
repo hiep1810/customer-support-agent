@@ -44,28 +44,34 @@ def analyze_sentiment(state: State) -> State:
 
 # 3) Response generators
 
-def handle_technical(state: State) -> State:
-    prompt = ChatPromptTemplate.from_template(
-        "Provide a technical support response: {query}"
-    )
+def generate_response(state: State, template: str) -> State:
+    """Generate a response using the given prompt template.
+
+    Args:
+        state: The current conversation state containing the customer query.
+        template: A prompt template string containing a ``{query}`` placeholder.
+
+    Returns:
+        A state fragment with the model's response under the ``response`` key.
+    """
+    prompt = ChatPromptTemplate.from_template(template)
     chain = prompt | ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0)
     return {"response": chain.invoke({"query": state["query"]}).content}
+
+
+def handle_technical(state: State) -> State:
+    """Provide a response for technical support queries."""
+    return generate_response(state, "Provide a technical support response: {query}")
 
 
 def handle_billing(state: State) -> State:
-    prompt = ChatPromptTemplate.from_template(
-        "Provide a billing support response: {query}"
-    )
-    chain = prompt | ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0)
-    return {"response": chain.invoke({"query": state["query"]}).content}
+    """Provide a response for billing-related queries."""
+    return generate_response(state, "Provide a billing support response: {query}")
 
 
 def handle_general(state: State) -> State:
-    prompt = ChatPromptTemplate.from_template(
-        "Provide a general support response: {query}"
-    )
-    chain = prompt | ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0)
-    return {"response": chain.invoke({"query": state["query"]}).content}
+    """Provide a response for general support queries."""
+    return generate_response(state, "Provide a general support response: {query}")
 
 # 4) Escalation node
 
