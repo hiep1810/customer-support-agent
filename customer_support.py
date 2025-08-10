@@ -5,6 +5,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 import os
 from dotenv import load_dotenv
+from typing import Literal
+from pydantic import BaseModel
 
 # Load Gemini key
 load_dotenv()
@@ -18,46 +20,55 @@ class State(TypedDict):
     sentiment: str
     response: str
 
-# 1) Categorization node
+# ---------- Schemas
+class CategoryOut(BaseModel):
+    category: Literal["Technical", "Billing", "General"]
+
+class SentimentOut(BaseModel):
+    sentiment: Literal["Positive", "Neutral", "Negative"]
+
+# Optional: nudge Gemini to JSON mode for extra safety (supported in recent LC)
+json_mode = {"response_mime_type": "application/json"}
+
+model = ChatGoogleGenerativeAI(
+    model=GEMINI_MODEL,
+    temperature=0,
+    generation_config=json_mode,  # safe to keep; remove if your version errors
+)
+
+# ---------- 1) Categorization node (strict)
 def categorize(state: State) -> State:
     prompt = ChatPromptTemplate.from_template(
-        "Categorize the following customer query into one of: Technical, Billing, General.\nQuery: {query}"
+        "You are a classifier. "
+        "Return JSON with a single field 'category' whose value is exactly one of: "
+        "Technical, Billing, General. No explanations.\n\nQuery: {query}"
     )
-    chain = prompt | ChatGoogleGenerativeAI(
-        model=GEMINI_MODEL,
-        temperature=0
-    )
-    category = chain.invoke({"query": state["query"]}).content
-    return {"category": category}
+    chain = prompt | model.with_structured_output(CategoryOut)
+    out: CategoryOut = chain.invoke({"query": state["query"]})
+    return {"category": out.category}
 
-# 2) Sentiment analysis node
+# ---------- 2) Sentiment analysis node (strict)
 def analyze_sentiment(state: State) -> State:
     prompt = ChatPromptTemplate.from_template(
-        "Analyze the sentiment of this customer query. Respond with Positive, Neutral, or Negative.\nQuery: {query}"
+        "You are a classifier. "
+        "Return JSON with a single field 'sentiment' whose value is exactly one of: "
+        "Positive, Neutral, Negative. No explanations.\n\nQuery: {query}"
     )
-    chain = prompt | ChatGoogleGenerativeAI(
-        model=GEMINI_MODEL,
-        temperature=0
-    )
-    sentiment = chain.invoke({"query": state["query"]}).content
-    return {"sentiment": sentiment}
+    chain = prompt | model.with_structured_output(SentimentOut)
+    out: SentimentOut = chain.invoke({"query": state["query"]})
+    return {"sentiment": out.sentiment}
 
-# 3) Response generators
-
+# ---------- 3) Response generator (kept free-form, but still controlled)
 def generate_response(state: State, template: str) -> State:
-    """Generate a response using the given prompt template.
-
-    Args:
-        state: The current conversation state containing the customer query.
-        template: A prompt template string containing a ``{query}`` placeholder.
-
-    Returns:
-        A state fragment with the model's response under the ``response`` key.
     """
-    prompt = ChatPromptTemplate.from_template(template)
-    chain = prompt | ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0)
-    return {"response": chain.invoke({"query": state["query"]}).content}
-
+    Generates a response using the given prompt template.
+    """
+    prompt = ChatPromptTemplate.from_template(
+        template + "\n\nRespond in the user's language and keep it concise."
+    )
+    chain = prompt | model
+    resp = chain.invoke({"query": state["query"]}).content.strip()
+    return {"response": resp}
 
 def handle_technical(state: State) -> State:
     """Provide a response for technical support queries."""
