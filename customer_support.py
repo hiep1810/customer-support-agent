@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 # Load Gemini key
 load_dotenv()
-# Optionally: os.environ['GOOGLE_API_KEY'] = os.getenv('GEMINI_API_KEY')
+os.environ['GOOGLE_API_KEY'] = os.getenv('GEMINI_API_KEY')
 
 GEMINI_MODEL = os.getenv("GEMINI_MODEL")
 
