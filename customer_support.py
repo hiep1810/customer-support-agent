@@ -10,8 +10,9 @@ from pydantic import BaseModel
 
 # Load Gemini key
 load_dotenv()
-os.environ['GOOGLE_API_KEY'] = os.getenv('GEMINI_API_KEY')
+# os.environ['GOOGLE_API_KEY'] = os.getenv('GEMINI_API_KEY')
 
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL")
 
 class State(TypedDict):
@@ -34,6 +35,7 @@ model = ChatGoogleGenerativeAI(
     model=GEMINI_MODEL,
     temperature=0,
     generation_config=json_mode,  # safe to keep; remove if your version errors
+    google_api_key=GEMINI_API_KEY,   # <<< important
 )
 
 # ---------- 1) Categorization node (strict)
