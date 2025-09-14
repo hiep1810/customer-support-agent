@@ -73,6 +73,8 @@ GEMINI_MODEL=gemini-1.5-pro
 
 Trong ví dụ này, biến `GEMINI_MODEL` được đặt mặc định là `gemini-1.5-pro`.
 
+Cả `GEMINI_API_KEY` và `GEMINI_MODEL` đều là bắt buộc; nếu thiếu, chương trình sẽ báo lỗi `EnvironmentError`.
+
 > **Lưu ý:** Bạn cũng có thể đặt biến `GOOGLE_API_KEY`, gói `langchain-google-genai` sẽ tự động lấy giá trị này.
 
 ## 5. Định nghĩa Workflow (`backend/customer_support.py`)
@@ -90,7 +92,13 @@ from dotenv import load_dotenv
 load_dotenv()
 # Tùy chọn: os.environ['GOOGLE_API_KEY'] = os.getenv('GEMINI_API_KEY')
 
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    raise EnvironmentError("Missing GEMINI_API_KEY")
+
 GEMINI_MODEL = os.getenv("GEMINI_MODEL")
+if not GEMINI_MODEL:
+    raise EnvironmentError("Missing GEMINI_MODEL")
 
 class State(TypedDict):
     query: str
@@ -105,6 +113,7 @@ def categorize(state: State) -> State:
     )
     chain = prompt | ChatGoogleGenerativeAI(
         model=GEMINI_MODEL,
+        google_api_key=GEMINI_API_KEY,
         temperature=0
     )
     category = chain.invoke({"query": state["query"]}).content
@@ -117,6 +126,7 @@ def analyze_sentiment(state: State) -> State:
     )
     chain = prompt | ChatGoogleGenerativeAI(
         model=GEMINI_MODEL,
+        google_api_key=GEMINI_API_KEY,
         temperature=0
     )
     sentiment = chain.invoke({"query": state["query"]}).content
@@ -128,7 +138,7 @@ def handle_technical(state: State) -> State:
     prompt = ChatPromptTemplate.from_template(
         "Cung cấp phản hồi hỗ trợ kỹ thuật cho truy vấn: {query}"
     )
-    chain = prompt | ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0)
+    chain = prompt | ChatGoogleGenerativeAI(model=GEMINI_MODEL, google_api_key=GEMINI_API_KEY, temperature=0)
     return {"response": chain.invoke({"query": state["query"]}).content}
 
 
@@ -136,7 +146,7 @@ def handle_billing(state: State) -> State:
     prompt = ChatPromptTemplate.from_template(
         "Cung cấp phản hồi hỗ trợ thanh toán cho truy vấn: {query}"
     )
-    chain = prompt | ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0)
+    chain = prompt | ChatGoogleGenerativeAI(model=GEMINI_MODEL, google_api_key=GEMINI_API_KEY, temperature=0)
     return {"response": chain.invoke({"query": state["query"]}).content}
 
 
@@ -144,7 +154,7 @@ def handle_general(state: State) -> State:
     prompt = ChatPromptTemplate.from_template(
         "Cung cấp phản hồi chung cho truy vấn: {query}"
     )
-    chain = prompt | ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0)
+    chain = prompt | ChatGoogleGenerativeAI(model=GEMINI_MODEL, google_api_key=GEMINI_API_KEY, temperature=0)
     return {"response": chain.invoke({"query": state["query"]}).content}
 
 # 4) Node chuyển tiếp (escalation)
