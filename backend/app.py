@@ -2,8 +2,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from dotenv import load_dotenv
-import os
-from customer_support import (
+from .customer_support import (
     run_customer_support,
     categorize_query,
     analyze_sentiment_query,

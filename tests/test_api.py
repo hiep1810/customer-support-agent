@@ -9,8 +9,8 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 os.environ.setdefault("GEMINI_API_KEY", "test-api-key")
 os.environ.setdefault("GEMINI_MODEL", "test-model")
 
-import app as fastapi_app  # noqa: E402
-import customer_support  # noqa: E402
+import backend.app as fastapi_app  # noqa: E402
+import backend.customer_support as customer_support  # noqa: E402
 
 
 def test_support_endpoint(monkeypatch):

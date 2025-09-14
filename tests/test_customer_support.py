@@ -7,7 +7,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 os.environ.setdefault("GEMINI_API_KEY", "test-api-key")
 os.environ.setdefault("GEMINI_MODEL", "test-model")
 
-import customer_support
+import backend.customer_support as customer_support
 
 
 def test_generate_response(monkeypatch):
