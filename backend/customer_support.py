@@ -13,7 +13,12 @@ load_dotenv()
 # os.environ['GOOGLE_API_KEY'] = os.getenv('GEMINI_API_KEY')
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    raise EnvironmentError("Missing GEMINI_API_KEY")
+
 GEMINI_MODEL = os.getenv("GEMINI_MODEL")
+if not GEMINI_MODEL:
+    raise EnvironmentError("Missing GEMINI_MODEL")
 
 class State(TypedDict):
     query: str
@@ -134,3 +139,13 @@ app = workflow.compile()
 def run_customer_support(query: str) -> dict:
     res = app.invoke({"query": query})
     return {k: res[k] for k in ("category", "sentiment", "response")}
+
+
+def categorize_query(query: str) -> dict:
+    """Classify the query into a support category."""
+    return categorize({"query": query})
+
+
+def analyze_sentiment_query(query: str) -> dict:
+    """Analyze the sentiment of the query."""
+    return analyze_sentiment({"query": query})

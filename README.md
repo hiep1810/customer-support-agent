@@ -16,9 +16,12 @@ Trong hướng dẫn này, chúng ta sẽ xây dựng và triển khai một age
 
 ```text
 support-agent/
+├── backend/
+│   ├── app.py
+│   └── customer_support.py
+├── frontend/
+├── tests/
 ├── .env
-├── customer_support.py
-├── app.py
 ├── requirements.txt
 ├── Dockerfile        # tùy chọn
 └── README.md         # bạn đang xem ở đây
@@ -70,12 +73,14 @@ GEMINI_MODEL=gemini-1.5-pro
 
 Trong ví dụ này, biến `GEMINI_MODEL` được đặt mặc định là `gemini-1.5-pro`.
 
+Cả `GEMINI_API_KEY` và `GEMINI_MODEL` đều là bắt buộc; nếu thiếu, chương trình sẽ báo lỗi `EnvironmentError`.
+
 > **Lưu ý:** Bạn cũng có thể đặt biến `GOOGLE_API_KEY`, gói `langchain-google-genai` sẽ tự động lấy giá trị này.
 
-## 5. Định nghĩa Workflow (`customer_support.py`)
+## 5. Định nghĩa Workflow (`backend/customer_support.py`)
 
 ```python
-# customer_support.py
+# backend/customer_support.py
 from typing import TypedDict
 from langgraph.graph import StateGraph, END
 from langchain_core.prompts import ChatPromptTemplate
@@ -87,7 +92,13 @@ from dotenv import load_dotenv
 load_dotenv()
 # Tùy chọn: os.environ['GOOGLE_API_KEY'] = os.getenv('GEMINI_API_KEY')
 
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    raise EnvironmentError("Missing GEMINI_API_KEY")
+
 GEMINI_MODEL = os.getenv("GEMINI_MODEL")
+if not GEMINI_MODEL:
+    raise EnvironmentError("Missing GEMINI_MODEL")
 
 class State(TypedDict):
     query: str
@@ -102,6 +113,7 @@ def categorize(state: State) -> State:
     )
     chain = prompt | ChatGoogleGenerativeAI(
         model=GEMINI_MODEL,
+        google_api_key=GEMINI_API_KEY,
         temperature=0
     )
     category = chain.invoke({"query": state["query"]}).content
@@ -114,6 +126,7 @@ def analyze_sentiment(state: State) -> State:
     )
     chain = prompt | ChatGoogleGenerativeAI(
         model=GEMINI_MODEL,
+        google_api_key=GEMINI_API_KEY,
         temperature=0
     )
     sentiment = chain.invoke({"query": state["query"]}).content
@@ -125,7 +138,7 @@ def handle_technical(state: State) -> State:
     prompt = ChatPromptTemplate.from_template(
         "Cung cấp phản hồi hỗ trợ kỹ thuật cho truy vấn: {query}"
     )
-    chain = prompt | ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0)
+    chain = prompt | ChatGoogleGenerativeAI(model=GEMINI_MODEL, google_api_key=GEMINI_API_KEY, temperature=0)
     return {"response": chain.invoke({"query": state["query"]}).content}
 
 
@@ -133,7 +146,7 @@ def handle_billing(state: State) -> State:
     prompt = ChatPromptTemplate.from_template(
         "Cung cấp phản hồi hỗ trợ thanh toán cho truy vấn: {query}"
     )
-    chain = prompt | ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0)
+    chain = prompt | ChatGoogleGenerativeAI(model=GEMINI_MODEL, google_api_key=GEMINI_API_KEY, temperature=0)
     return {"response": chain.invoke({"query": state["query"]}).content}
 
 
@@ -141,7 +154,7 @@ def handle_general(state: State) -> State:
     prompt = ChatPromptTemplate.from_template(
         "Cung cấp phản hồi chung cho truy vấn: {query}"
     )
-    chain = prompt | ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0)
+    chain = prompt | ChatGoogleGenerativeAI(model=GEMINI_MODEL, google_api_key=GEMINI_API_KEY, temperature=0)
     return {"response": chain.invoke({"query": state["query"]}).content}
 
 # 4) Node chuyển tiếp (escalation)
@@ -195,10 +208,10 @@ def run_customer_support(query: str) -> dict:
     return {k: res[k] for k in ("category", "sentiment", "response")}
 ```
 
-## 6. Xây dựng Server API (`app.py`)
+## 6. Xây dựng Server API (`backend/app.py`)
 
 ```python
-# app.py
+# backend/app.py
 from fastapi import FastAPI
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -229,7 +242,7 @@ def health_check():
 ## 7. Chạy trên máy cục bộ
 
 ```bash
-uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+uvicorn backend.app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 * Truy cập [http://localhost:8000/docs](http://localhost:8000/docs) để xem giao diện tương tác của API.
@@ -254,7 +267,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 EXPOSE 8000
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
 ```bash

@@ -1,9 +1,13 @@
+import os
 import sys
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-import customer_support
+os.environ.setdefault("GEMINI_API_KEY", "test-api-key")
+os.environ.setdefault("GEMINI_MODEL", "test-model")
+
+import backend.customer_support as customer_support
 
 
 def test_generate_response(monkeypatch):
@@ -30,4 +34,8 @@ def test_generate_response(monkeypatch):
     state = {"query": "How do I reset my password?"}
     result = customer_support.generate_response(state, "Answer: {query}")
 
-    assert result == {"response": "Answer: {query} -> How do I reset my password?"}
+    expected = (
+        "Answer: {query}\n\nRespond in the user's language and keep it concise."
+        " -> How do I reset my password?"
+    )
+    assert result == {"response": expected}
