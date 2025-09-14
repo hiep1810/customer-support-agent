@@ -13,7 +13,12 @@ load_dotenv()
 # os.environ['GOOGLE_API_KEY'] = os.getenv('GEMINI_API_KEY')
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    raise EnvironmentError("Missing GEMINI_API_KEY")
+
 GEMINI_MODEL = os.getenv("GEMINI_MODEL")
+if not GEMINI_MODEL:
+    raise EnvironmentError("Missing GEMINI_MODEL")
 
 class State(TypedDict):
     query: str
